@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sign In To Admin</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100vh;
+        background: url("https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80")
+          no-repeat center center fixed;
+        background-size: cover;
+        font-family: "Segoe UI", Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        background: rgba(20, 20, 20, 0.85);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        width: 350px;
+        max-width: 90vw;
+        padding: 40px 30px 30px 30px;
+        color: #fff;
+        text-align: center;
+        overflow: hidden;
+      }
+      .container h2 {
+        margin-bottom: 10px;
+        font-size: 2em;
+        font-weight: 600;
+      }
+      .container p {
+        margin-bottom: 25px;
+        color: #ccc;
+        font-size: 1em;
+      }
+      .input-group {
+        margin-bottom: 18px;
+      }
+      .input-group input {
+        width: 100%;
+        padding: 12px 18px;
+        border-radius: 30px;
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-size: 1em;
+        outline: none;
+        margin-bottom: 5px;
+        transition: background 0.2s;
+        box-sizing: border-box;
+      }
+      .input-group input:focus {
+        background: rgba(255, 255, 255, 0.25);
+      }
+      .btn {
+        width: 100%;
+        padding: 12px 0;
+        border-radius: 30px;
+        border: none;
+        background: #2584ff;
+        color: #fff;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 10px;
+        transition: background 0.2s;
+      }
+      .btn:hover {
+        background: #1a5dcc;
+      }
+      .forgot {
+        color: #fff;
+        font-size: 0.95em;
+        opacity: 0.8;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      #result {
+        margin-top: 10px;
+        color: #ffbaba;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Sign In To Admin</h2>
+      <p>Enter your details to log in to your account:</p>
+      <form id="loginForm">
+        <div class="input-group">
+          <input type="text" id="username" placeholder="Email" required />
+        </div>
+        <div class="input-group">
+          <input
+            type="password"
+            id="password"
+            placeholder="Password"
+            required
+          />
+        </div>
+        <button class="btn" type="submit">Sign In</button>
+      </form>
+      <div class="forgot">I've forgotten my password.</div>
+      <div id="result"></div>
+    </div>
+    <script>
+      document.getElementById("loginForm").onsubmit = async function (e) {
+        e.preventDefault();
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = "/";
+        } else {
+          document.getElementById("result").innerText = data.message;
+        }
+      };
+    </script>
+  </body>
+</html>
