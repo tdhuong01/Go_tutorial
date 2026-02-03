@@ -88,6 +88,17 @@
         text-decoration: underline;
         cursor: pointer;
       }
+      .register-link {
+        margin-top: 10px;
+      }
+      .register-link a {
+        color: #2584ff;
+        text-decoration: none;
+        font-size: 0.95em;
+      }
+      .register-link a:hover {
+        text-decoration: underline;
+      }
       #result {
         margin-top: 10px;
         color: #ffbaba;
@@ -113,10 +124,36 @@
         </div>
         <button class="btn" type="submit">Sign In</button>
       </form>
+      <form id="registerForm" style="display: none;">
+        <div class="input-group">
+          <input type="text" id="regUsername" placeholder="Username" required />
+        </div>
+        <div class="input-group">
+          <input
+            type="password"
+            id="regPassword"
+            placeholder="Password"
+            required
+          />
+        </div>
+        <button class="btn" type="submit">Register</button>
+      </form>
       <div class="forgot">I've forgotten my password.</div>
+      <div class="register-link">
+        <a href="#" id="showRegister">Don't have an account? Register here</a>
+      </div>
       <div id="result"></div>
     </div>
     <script>
+      document.getElementById("showRegister").onclick = function(e) {
+        e.preventDefault();
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("registerForm").style.display = "block";
+        document.querySelector("h2").innerText = "Register";
+        document.querySelector("p").innerText = "Enter your details to create an account:";
+        document.getElementById("showRegister").style.display = "none";
+      };
+
       document.getElementById("loginForm").onsubmit = async function (e) {
         e.preventDefault();
         const username = document.getElementById("username").value;
@@ -131,6 +168,27 @@
           window.location.href = "/";
         } else {
           document.getElementById("result").innerText = data.message;
+        }
+      };
+
+      document.getElementById("registerForm").onsubmit = async function (e) {
+        e.preventDefault();
+        const username = document.getElementById("regUsername").value;
+        const password = document.getElementById("regPassword").value;
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        document.getElementById("result").innerText = data.message;
+        if (data.success) {
+          // Switch back to login
+          document.getElementById("registerForm").style.display = "none";
+          document.getElementById("loginForm").style.display = "block";
+          document.querySelector("h2").innerText = "Sign In To Admin";
+          document.querySelector("p").innerText = "Enter your details to log in to your account:";
+          document.getElementById("showRegister").style.display = "block";
         }
       };
     </script>

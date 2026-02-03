@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var jwtKey = []byte("your_secret_key") // Đổi thành key bí mật của bạn
@@ -19,6 +22,16 @@ type LoginResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Token   string `json:"token,omitempty"`
+}
+
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type RegisterResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 // Sinh JWT token
@@ -51,28 +64,92 @@ func loginAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Username == "admin" && req.Password == "123456" {
-		token, err := generateJWT(req.Username)
-		if err != nil {
-			http.Error(w, "Could not generate token", http.StatusInternalServerError)
+	// Tìm user trong database
+	var user User
+	err = userCollection.FindOne(context.TODO(), bson.M{"username": req.Username}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			resp := LoginResponse{Success: false, Message: "Sai tài khoản hoặc mật khẩu"}
+			json.NewEncoder(w).Encode(resp)
 			return
 		}
-		// Set token vào cookie
-		http.SetCookie(w, &http.Cookie{
-			Name:     "token",
-			Value:    token,
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   false, // Đặt true nếu dùng HTTPS
-			SameSite: http.SameSiteLaxMode,
-		})
-		resp := LoginResponse{Success: true, Message: "Đăng nhập thành công", Token: token}
-		json.NewEncoder(w).Encode(resp)
+		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
-	} else {
+	}
+
+	// Kiểm tra mật khẩu
+	if !checkPassword(user.Password, req.Password) {
 		resp := LoginResponse{Success: false, Message: "Sai tài khoản hoặc mật khẩu"}
 		json.NewEncoder(w).Encode(resp)
+		return
 	}
+
+	token, err := generateJWT(req.Username)
+	if err != nil {
+		http.Error(w, "Could not generate token", http.StatusInternalServerError)
+		return
+	}
+	// Set token vào cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Đặt true nếu dùng HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+	resp := LoginResponse{Success: true, Message: "Đăng nhập thành công", Token: token}
+	json.NewEncoder(w).Encode(resp)
+}
+
+// Handler xử lý API đăng ký
+func registerAPIHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req RegisterRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Username == "" || req.Password == "" {
+		resp := RegisterResponse{Success: false, Message: "Tên đăng nhập và mật khẩu không được để trống"}
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Hash mật khẩu
+	hashedPassword, err := hashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "Could not hash password", http.StatusInternalServerError)
+		return
+	}
+
+	// Tạo user
+	user := User{
+		Username: req.Username,
+		Password: hashedPassword,
+	}
+
+	// Chèn vào database
+	_, err = userCollection.InsertOne(context.TODO(), user)
+	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			resp := RegisterResponse{Success: false, Message: "Tên đăng nhập đã tồn tại"}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		http.Error(w, "Could not create user", http.StatusInternalServerError)
+		return
+	}
+
+	resp := RegisterResponse{Success: true, Message: "Đăng ký thành công"}
+	json.NewEncoder(w).Encode(resp)
 }
 
 // Handler xử lý logout
